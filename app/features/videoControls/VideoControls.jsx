@@ -3,6 +3,11 @@ import ProgressBar from "../../components/ui/ProgressBar";
 import VolumeControl from "../../components/ui/VolumeControl";
 import PlaybackControls from "../playbackControls/PlaybackControls";
 
+/**
+ * VideoControls component
+ *
+ * Combines playback buttons, progress bar, and volume control.
+ */
 const VideoControls = ({
   isPlaying,
   played,
@@ -17,12 +22,14 @@ const VideoControls = ({
   onSkip,
 }) => (
   <div className="controls space-y-3">
+    {/* Playback buttons (play/pause, skip) */}
     <PlaybackControls
       isPlaying={isPlaying}
       onPlayPause={onPlayPause}
       onSkip={onSkip}
     />
 
+    {/* Video progress bar */}
     <ProgressBar
       played={played}
       duration={duration}
@@ -34,11 +41,10 @@ const VideoControls = ({
       onTouchEnd={onSeekEnd}
     />
 
-    <VolumeControl
-      volume={volume}
-      onVolumeChange={onVolumeChange}
-    />
+    {/* Volume control slider */}
+    <VolumeControl volume={volume} onVolumeChange={onVolumeChange} />
   </div>
 );
 
+// React.memo to avoid unnecessary re-renders
 export default React.memo(VideoControls);

@@ -1,10 +1,18 @@
 import React from "react";
 import CustomButton from "../../components/ui/CustomButton";
 
+/**
+ * PlaybackControls component
+ *
+ * Renders video playback buttons: skip backward, play/pause, skip forward.
+ */
 const PlaybackControls = ({ isPlaying, onPlayPause, onSkip }) => {
   return (
     <div className="flex justify-center gap-3">
-      <CustomButton onClick={() => onSkip(-10)}>-10c</CustomButton>
+      {/* Skip backward 10 seconds */}
+      <CustomButton onClick={() => onSkip(-10)}>-10s</CustomButton>
+
+      {/* Play / Pause toggle */}
       <CustomButton
         onClick={onPlayPause}
         active={isPlaying}
@@ -12,7 +20,9 @@ const PlaybackControls = ({ isPlaying, onPlayPause, onSkip }) => {
       >
         {isPlaying ? "⏸" : "⏵"}
       </CustomButton>
-      <CustomButton onClick={() => onSkip(10)}>+10c</CustomButton>
+
+      {/* Skip forward 10 seconds */}
+      <CustomButton onClick={() => onSkip(10)}>+10s</CustomButton>
     </div>
   );
 };

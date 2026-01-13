@@ -1,3 +1,10 @@
+/**
+ * Formats time in seconds into a human-readable string.
+ * Output:
+ *  - H:MM:SS.mmm (when hours > 0)
+ *  - M:SS.mmm (otherwise)
+ */
+
 export const formatForTime = (seconds = 0) => {
   if (isNaN(seconds)) return "0:00.000";
 
@@ -12,6 +19,7 @@ export const formatForTime = (seconds = 0) => {
   const m = totalMinutes % 60;
   const h = Math.floor(totalMinutes / 60);
 
+  // Include hours only when they are present
   if (h > 0) {
     return `${h}:${m.toString().padStart(2, "0")}:${s
       .toString()

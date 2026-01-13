@@ -29,7 +29,7 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "tests/utils/clamp.test.js"  ],
   "exclude": [
     "node_modules"
   ]

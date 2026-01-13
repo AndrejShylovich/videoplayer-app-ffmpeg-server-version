@@ -2,48 +2,56 @@ import path from "path";
 import fs from "fs";
 import ffmpeg from "fluent-ffmpeg";
 import { NextResponse } from "next/server";
+import { validateVideoPath } from "../../lib/validateVideoPath";
 
 export async function POST(request) {
-  const startedAt = Date.now();
+  let command = null;
+  let aborted = false;
 
   try {
     const { filePath, start, end, crf } = await request.json();
 
-    let lastLogTime = 0;
-    console.log("[TRIM] Request received", {
-      filePath,
-      start,
-      end,
-    });
-    console.log(crf)
-    const safeCrf = typeof crf === "number" && crf >= 0 && crf <= 51 ? crf : 18;
-
-    if (!filePath || start == null || end == null) {
-      console.warn("[TRIM] Missing parameters");
+    if (start == null || end == null) {
       return new NextResponse("Missing parameters", { status: 400 });
     }
 
-    if (!fs.existsSync(filePath)) {
-      console.warn("[TRIM] File not found:", filePath);
-      return new NextResponse("File not found", { status: 404 });
+    let resolvedPath;
+    try {
+      resolvedPath = validateVideoPath(filePath);
+    } catch (err) {
+      return new NextResponse(err.message, { status: 400 });
     }
 
     const duration = end - start;
     if (duration <= 0) {
-      console.warn("[TRIM] Invalid range:", { start, end });
       return new NextResponse("Invalid trim range", { status: 400 });
     }
 
-    const videoId = path.basename(filePath, path.extname(filePath));
-    const outputDir = path.join(process.cwd(), "public", "trimmed");
+    const safeCrf =
+      typeof crf === "number" && crf >= 0 && crf <= 51 ? crf : 18;
+
+    const videoId = path.basename(resolvedPath, path.extname(resolvedPath));
+
+    // 👉 api/uploads/trimmed
+    const outputDir = path.join(
+      process.cwd(),
+      "app",
+      "data",
+      "trimmed"
+    );
+
     fs.mkdirSync(outputDir, { recursive: true });
 
-    const outputPath = path.join(outputDir, `${videoId}-${start}-${end}.mp4`);
+    const outputFileName = `${videoId}-${Date.now()}-${start}-${end}.mp4`;
+    const outputPath = path.join(outputDir, outputFileName);
 
-    console.log("[TRIM] Output:", outputPath);
+    request.signal.addEventListener("abort", () => {
+      aborted = true;
+      if (command) command.kill("SIGKILL");
+    });
 
     await new Promise((resolve, reject) => {
-      ffmpeg(filePath)
+      command = ffmpeg(resolvedPath)
         .setStartTime(start)
         .setDuration(duration)
         .videoCodec("libx264")
@@ -55,53 +63,36 @@ export async function POST(request) {
           "-movflags +faststart",
         ])
         .output(outputPath)
-        .on("start", (cmd) => {
-          console.log("[FFMPEG] Start:", cmd);
-          console.log("[FFMPEG] Quality:", safeCrf);
-        })
-        .on("progress", (p) => {
-          const now = Date.now();
-          if (now - lastLogTime < 1000) return;
-          lastLogTime = now;
-
-          const percent =
-            typeof p.percent === "number" && Number.isFinite(p.percent)
-              ? p.percent.toFixed(1)
-              : null;
-
-          const timemark =
-            typeof p.timemark === "string" && p.timemark !== "N/A"
-              ? p.timemark
-              : null;
-
-          if (percent && timemark) {
-            console.log(`[FFMPEG] ${percent}% | ${timemark}`);
-          } else if (timemark) {
-            console.log(`[FFMPEG] time ${timemark}`);
-          } else {
-            console.log("[FFMPEG] working...");
-          }
-        })
-        .on("end", () => {
-          console.log("[FFMPEG] Finished");
-          resolve();
-        })
-        .on("error", (err, stdout, stderr) => {
-          console.error("[FFMPEG] Error:", err.message);
-          if (stderr) console.error(stderr);
-          reject(err);
-        })
+        .on("end", resolve)
+        .on("error", reject)
         .run();
     });
 
-    console.log(`[TRIM] Done in ${Date.now() - startedAt} ms`);
+    if (aborted) {
+      cleanupFile(outputPath);
+      return new NextResponse(null, { status: 499 });
+    }
 
     return NextResponse.json({
       success: true,
-      url: `/trimmed/${path.basename(outputPath)}`,
+      url: `/api/uploads/trimmed/${outputFileName}`,
     });
   } catch (err) {
-    console.error("[TRIM] Fatal error:", err);
+    if (aborted) {
+      return new NextResponse(null, { status: 499 });
+    }
+
+    console.error("[TRIM] Error:", err);
     return new NextResponse("Processing failed", { status: 500 });
+  }
+}
+
+function cleanupFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (e) {
+    console.warn("[TRIM] Cleanup failed:", e);
   }
 }
