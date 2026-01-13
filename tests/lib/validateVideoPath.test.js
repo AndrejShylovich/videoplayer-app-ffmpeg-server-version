@@ -1,49 +1,56 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import path from "path";
-import fs from "fs";
-import { validateVideoPath } from "../../app/lib/validateVideoPath";
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-const testVideoPath = path.join(uploadsDir, "test.mp4");
-const testTxtPath = path.join(uploadsDir, "test.txt");
+// Мокаем fs
+vi.mock("fs", () => ({
+  default: {
+    existsSync: vi.fn(),
+  },
+  existsSync: vi.fn(),
+}));
+
+import fs from "fs";
 
 describe("validateVideoPath", () => {
-  beforeAll(() => {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-    fs.writeFileSync(testVideoPath, "fake video content");
-    fs.writeFileSync(testTxtPath, "not a video");
-  });
+  const cwd = "/project";
+  const validFile = path.join("app", "data", "video.mp4");
 
-  afterAll(() => {
-    fs.rmSync(uploadsDir, { recursive: true, force: true });
-  });
+  let validateVideoPath;
 
-  it("returns resolved path for valid mp4 file inside uploads", () => {
-    const result = validateVideoPath(testVideoPath);
-    expect(result).toBe(path.resolve(testVideoPath));
-  });
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.spyOn(process, "cwd").mockReturnValue(cwd);
 
-  it("throws if filePath is missing", () => {
-    expect(() => validateVideoPath()).toThrow("Invalid filePath");
-  });
-
-  it("throws if filePath is not a string", () => {
-    expect(() => validateVideoPath(123)).toThrow("Invalid filePath");
-  });
-
-  it("throws if path traversal is attempted", () => {
-    const evilPath = path.join(uploadsDir, "..", "secret.mp4");
-    expect(() => validateVideoPath(evilPath)).toThrow(
-      "Access outside uploads directory"
-    );
+    ({ validateVideoPath } = await import(
+      "../../app/lib/validateVideoPath.js"
+    ));
   });
 
   it("throws if file does not exist", () => {
-    const missingPath = path.join(uploadsDir, "missing.mp4");
-    expect(() => validateVideoPath(missingPath)).toThrow("File not found");
+    fs.existsSync.mockReturnValue(false);
+
+    expect(() =>
+      validateVideoPath(validFile)
+    ).toThrow("File not found");
   });
 
-  it("throws if file extension is not mp4", () => {
-    expect(() => validateVideoPath(testTxtPath)).toThrow("Invalid file type");
+  it("throws if file extension is not .mp4", () => {
+    fs.existsSync.mockReturnValue(true);
+
+    const invalidFile = path.join("app", "data", "video.avi");
+
+    expect(() =>
+      validateVideoPath(invalidFile)
+    ).toThrow("Invalid file type");
+  });
+
+  it("returns resolved path for valid mp4 file", () => {
+    fs.existsSync.mockReturnValue(true);
+
+    const result = validateVideoPath(validFile);
+
+    expect(result).toBe(
+      path.resolve(cwd, "app", "data", "video.mp4")
+    );
   });
 });

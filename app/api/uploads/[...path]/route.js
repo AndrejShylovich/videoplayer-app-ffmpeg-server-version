@@ -20,7 +20,7 @@ export async function GET(_req, { params }) {
   const ext = path.extname(filePath).toLowerCase();
 
   let contentType = "application/octet-stream";
-  if (ext === ".png") contentType = "image/png";
+  if (ext === ".jpg") contentType = "image/jpg";
   if (ext === ".mp4") contentType = "video/mp4";
 
   return new NextResponse(file, {

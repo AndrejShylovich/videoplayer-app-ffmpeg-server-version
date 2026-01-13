@@ -38,10 +38,11 @@ export async function POST(request) {
 
     const ffmpegPromise = new Promise((resolve, reject) => {
       command = ffmpeg(resolvedPath)
-        .output(path.join(outputDir, "frame-%05d.png"))
+        .output(path.join(outputDir, "frame-%05d.jpg"))
         .outputOptions([
           `-vf fps=${fps},scale=${frameWidth}:-1`,
-          "-vsync vfr",
+          "-q:v 10",
+          "-vsync 0",
         ])
         .on("end", resolve)
         .on("error", reject)

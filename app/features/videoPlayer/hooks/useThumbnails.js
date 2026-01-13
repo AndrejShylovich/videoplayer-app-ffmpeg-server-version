@@ -77,6 +77,7 @@ export function useThumbnails({ duration, serverFilePath }) {
 
     return () => {
       abortRef.current?.abort();
+      prevRef.current.forEach((t) => URL.revokeObjectURL(t.url));
       prevRef.current = [];
     };
   }, [generate]);
