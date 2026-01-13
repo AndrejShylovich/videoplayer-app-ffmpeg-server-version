@@ -57,7 +57,7 @@ export async function POST(request) {
         .videoCodec("libx264")
         .audioCodec("aac")
         .outputOptions([
-          "-preset veryslow",
+          "-preset ultrafast",
           `-crf ${safeCrf}`,
           "-pix_fmt yuv420p",
           "-movflags +faststart",
